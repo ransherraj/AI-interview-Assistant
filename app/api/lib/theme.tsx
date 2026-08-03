@@ -1,22 +1,34 @@
-export function toggleTheme() {
-  const html = document.documentElement
+export function toggleTheme(): "dark" | "light" {
+  if (typeof window === "undefined") return "dark"
 
-  if (html.classList.contains("dark")) {
-    html.classList.remove("dark")
-    localStorage.setItem("theme", "light")
-  } else {
+  const html = document.documentElement
+  const isCurrentlyDark = html.classList.contains("dark")
+  const nextTheme = isCurrentlyDark ? "light" : "dark"
+
+  if (nextTheme === "dark") {
     html.classList.add("dark")
-    localStorage.setItem("theme", "dark")
+  } else {
+    html.classList.remove("dark")
+  }
+
+  localStorage.setItem("theme", nextTheme)
+  return nextTheme
+}
+
+export function initThemeListener() {
+  if (typeof window === "undefined") return
+
+  const savedTheme = localStorage.getItem("theme")
+  const systemPrefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches
+
+  if (savedTheme === "dark" || (!savedTheme && systemPrefersDark)) {
+    document.documentElement.classList.add("dark")
+  } else {
+    document.documentElement.classList.remove("dark")
   }
 }
 
-export function loadTheme() {
-  const saved = localStorage.getItem("theme")
-  const html = document.documentElement
-
-  if (saved === "light") {
-    html.classList.remove("dark")
-  } else {
-    html.classList.add("dark")
-  }
+export function getTheme(): "dark" | "light" {
+  if (typeof window === "undefined") return "dark"
+  return document.documentElement.classList.contains("dark") ? "dark" : "light"
 }
