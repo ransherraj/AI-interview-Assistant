@@ -1,38 +1,51 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Amleefa AI — Architectural AI Technical Interviewer
 
-## Getting Started
+An intelligent, full-stack AI platform designed to simulate realistic, adaptive technical interviews for software engineering candidates. Powered by **Llama 3.3 70B** via Groq, **Next.js 15 App Router**, **Prisma**, **PostgreSQL**, and **NextAuth.js**.
 
-First, run the development server:
+---
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+## 🌟 Key Features
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+* 🧠 **Adaptive AI Interviewer**: Driven by Llama 3.3 70B with step-by-step turn-taking, real-time code evaluation, DSA problem-solving, System Design scenarios, and STAR behavioral analysis.
+* 🔄 **Session Persistence**: Chats automatically restore active session IDs across hard refreshes via local state and PostgreSQL persistence.
+* ✏️ **Dynamic Chat Titles**: Automatic title generation based on initial context or candidate input, updated via dynamic API endpoints.
+* 🎙️ **Voice-to-Text Transcription**: Integrated Web Speech API with real-time mic buffer management and automatic input clearing on submit.
+* 🔒 **Session Threshold Guardrails**: Strictly limits active user sessions (up to 20 chats) to optimize database utilization.
+* 🎨 **Developer UX**: Markdown rendering with syntax highlighting, one-click code copy, theme switching (Light/Dark mode), and reactive emotion indicators.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+---
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## 🏗️ Tech Stack
 
-## Learn More
+* **Framework**: Next.js 15 (App Router, React 19)
+* **Language**: TypeScript
+* **Database ORM**: Prisma ORM
+* **Database**: PostgreSQL
+* **Authentication**: NextAuth.js
+* **AI Model Engine**: Groq API (`llama-3.3-70b-versatile` via `openai` SDK)
+* **Styling & UI**: Tailwind CSS, Lucide React Icons, React Markdown (`remark-gfm`)
 
-To learn more about Next.js, take a look at the following resources:
+---
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## 📁 Project Architecture
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
-# AI-interview-Assistant
-Real time interview assistant with chat 
+```text
+.
+├── app/
+│   ├── api/
+│   │   ├── auth/[...nextauth]/   # NextAuth route handler
+│   │   ├── chat/                 # Primary AI interaction pipeline
+│   │   └── chats/                # Chat session CRUD endpoints
+│   │       ├── route.ts          # GET list, POST new session
+│   │       └── [id]/route.ts     # GET session details, PATCH title, DELETE session
+│   ├── auth/                     # Authentication pages (signin, logged-out)
+│   ├── globals.css               # Base Tailwind CSS rules
+│   ├── layout.tsx                # Root layout with SessionProvider
+│   └── page.tsx                  # Main AI Workspace UI
+├── lib/
+│   ├── auth.ts                   # NextAuth options configuration
+│   ├── db.ts                     # Database alias re-exports
+│   └── prisma.ts                 # Global Prisma client singleton
+├── prisma/
+│   └── schema.prisma             # User, Session, Chat, and Message models
+└── public/                       # Static branding & assets
