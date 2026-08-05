@@ -176,23 +176,26 @@ export async function POST(req: Request) {
       chatId: activeChat.id,
       message: savedAiMessage,
     });
-  } catch (error) {
-    console.error("Groq / Chat API Error:", error);
+  } catch (error: any) {
+  console.error("Groq / Chat API Error:", error);
 
-    // Handle Rate Limit specifically
-  if (error?.status === 429 || error?.code === "rate_limit_exceeded") {
+  // Type-safe check for 429 rate limits
+  const status = error?.status || error?.response?.status;
+  const code = error?.code || error?.error?.code;
+
+  if (status === 429 || code === "rate_limit_exceeded") {
     return NextResponse.json(
       {
         error: "Daily token limit exhausted for this session. Please create a new session or try again later.",
-        isRateLimit: true
+        isRateLimit: true,
       },
       { status: 429 }
-    )
+    );
   }
 
   return NextResponse.json(
     { error: "Failed to process chat request." },
     { status: 500 }
-  )
-  }
+  );
+}
 }
