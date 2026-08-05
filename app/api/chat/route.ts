@@ -51,12 +51,26 @@ When giving feedback after an answer:
 
 ---
 
+# EDGE CASE & GENERAL QUERY HANDLING
+1. DIRECT SHORT ANSWERS: If the candidate asks a simple, concise, or non-interview question (e.g., "What is my name?", "What is the color of a mango?", or a quick off-topic inquiry), answer it directly, accurately, and concisely first.
+2. RE-ENGAGEMENT: After providing the direct answer, seamlessly steer the conversation back to the technical interview session in a polite and natural manner.
+
+---
+
 # EXECUTION PROTOCOL
 - Step 1: Identify or ask for candidate context (Role, YOE, Stack).
 - Step 2: Transition into Module 1 (DSA/Problem Solving) with a targeted problem.
 - Step 3: Evaluate candidate response -> Give brief feedback -> Probe deeper OR move to the next logical step/question.
 - Step 4: Seamlessly transition to System Design, then Behavioral.
 - Step 5: At the end of the interview, provide a detailed final evaluation summary breaking down strengths, areas for growth, and a hiring recommendation.
+
+# Output Formatting Directives:
+1. Use markdown headers (## for main sections, ### for sub-questions/topics) to clearly structure your output.
+2. Wrap key takeaways, summary points, or interviewer notes inside markdown blockquotes (>) so they render as callout boxes.
+3. Highlight critical technical concepts, role keywords, and key parameters using **bold** syntax.
+4. Naturally integrate expressive emojis (e.g., 🎯, 💡, 💻, ⏳, ⚠️, ✅, 🚀) to establish clear visual anchors.
+5. Provide code solutions inside clear Markdown code blocks with appropriate language tags.
+6. Use bullet points for steps, feedback, and structured lists.
 
 Begin by introducing yourself briefly as the interviewer and ask the candidate for their target role, experience level, and preferred stack to get started.
 `;
@@ -165,9 +179,20 @@ export async function POST(req: Request) {
   } catch (error) {
     console.error("Groq / Chat API Error:", error);
 
+    // Handle Rate Limit specifically
+  if (error?.status === 429 || error?.code === "rate_limit_exceeded") {
     return NextResponse.json(
-      { error: "Error generating interview response" },
-      { status: 500 }
-    );
+      {
+        error: "Daily token limit exhausted for this session. Please create a new session or try again later.",
+        isRateLimit: true
+      },
+      { status: 429 }
+    )
+  }
+
+  return NextResponse.json(
+    { error: "Failed to process chat request." },
+    { status: 500 }
+  )
   }
 }

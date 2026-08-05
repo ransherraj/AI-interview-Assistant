@@ -6,35 +6,35 @@
   --chat-ai-bg: #111827;
   --chat-ai-text: #f9fafb;
   --chat-ai-border: #1f2937;
-  --chat-user-bg: #1e293b;
+  --chat-user-bg: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
   --chat-user-text: #ffffff;
-  --chat-user-border: #3b82f640;
+  --chat-user-border: rgba(147, 197, 253, 0.3);
   color-scheme: dark;
 }
 
 html.light {
   --background: #7db4eb;
   --foreground: #0f172a;
-  /* Distinct Light Mode Chatbox Colors */
   --chat-ai-bg: #edeff3;
   --chat-ai-text: #080858;
   --chat-ai-border: #cbd5e1;
-  --chat-user-bg: #2d2e2e; /* Vibrant Royal Blue */
-  --chat-user-text: #ecf2f5;
-  --chat-user-border: #0b1b47;
+  /* Premium Slate-Indigo Gradient for Light Mode */
+  --chat-user-bg: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+  --chat-user-text: #f8fafc;
+  --chat-user-border: rgba(255, 255, 255, 0.15);
   color-scheme: light;
 }
 
 html.dark {
   --background: #0b0f19;
   --foreground: #f8fafc;
-  /* Smooth Dark Mode Chatbox Colors */
   --chat-ai-bg: #0f172a;
   --chat-ai-text: #f8fafc;
   --chat-ai-border: #1e293b;
-  --chat-user-bg: #1e293b; /* Gentle Slate Dark */
-  --chat-user-text: #f1f5f9;
-  --chat-user-border: #6366f140;
+  /* Vibrant Royal Indigo Gradient for Dark Mode */
+  --chat-user-bg: linear-gradient(135deg, #4f46e5 0%, #3730a3 100%);
+  --chat-user-text: #ffffff;
+  --chat-user-border: rgba(129, 140, 248, 0.4);
   color-scheme: dark;
 }
 
@@ -43,4 +43,14 @@ body {
   color: var(--foreground);
   transition: background-color 0.25s ease, color 0.25s ease;
   font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+}
+
+/* User Message Styling */
+.chat-user-bubble {
+  background: var(--chat-user-bg) !important;
+  color: var(--chat-user-text) !important;
+  border-color: var(--chat-user-border) !important;
+  box-shadow: 0 4px 12px -2px rgba(0, 0, 0, 0.18);
+  font-weight: 500;
+  letter-spacing: 0.01em;
 }
