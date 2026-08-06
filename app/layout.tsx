@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import AuthProvider from "./api/components/AuthProviders";
+import { LoaderProvider } from "./context/LoaderContext";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -14,7 +15,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "AI Technical Interviewer",
+  title: "Amleefa AI",
   description: "Interactive AI Technical Interview Platform",
 };
 
@@ -30,7 +31,9 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen`}
       >
         <AuthProvider>
-          {children}
+          <LoaderProvider>
+            {children}
+          </LoaderProvider>
         </AuthProvider>
       </body>
     </html>

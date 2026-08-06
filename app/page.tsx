@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import {
   Send,
   Bot,
@@ -54,45 +54,19 @@ type ChatSession = {
   createdAt?: string;
 };
 
+import AmleefaLogo from "./api/lib/AmleefaLogo";
+import { useGlobalLoader } from "./context/LoaderContext";
+
 const MAX_SESSIONS = 20;
-
-function AmleefaLogo({ className = "w-6 h-6" }: { className?: string }) {
-  return (
-    <svg
-      viewBox="0 0 100 100"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      className={className}
-    >
-      <defs>
-        <linearGradient id="amleefaGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#818CF8" />
-          <stop offset="50%" stopColor="#4F46E5" />
-          <stop offset="100%" stopColor="#06B6D4" />
-        </linearGradient>
-      </defs>
-      <rect width="100" height="100" rx="28" fill="url(#amleefaGrad)" />
-      <path
-        d="M30 70 L50 30 L70 70 M38 56 L62 56"
-        stroke="white"
-        strokeWidth="8"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <circle cx="50" cy="24" r="5" fill="#38BDF8" />
-    </svg>
-  );
-}
-
 export default function InterviewPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
-
+  const { showLoader, hideLoader } = useGlobalLoader();
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [isDark, setIsDark] = useState(true);
   const [copiedId, setCopiedId] = useState<string | null>(null);
-
+  const [isFetchingChats, setIsFetchingChats] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
@@ -119,6 +93,9 @@ export default function InterviewPage() {
   const [speakingMessageId, setSpeakingMessageId] = useState<string | null>(
     null,
   );
+
+  const lastTranscriptRef = useRef<string>("");
+  const isProcessingSpeechRef = useRef<boolean>(false);
 
   // Initialize and detect available female voices from the browser
   useEffect(() => {
@@ -320,11 +297,22 @@ export default function InterviewPage() {
 
     recognition.onresult = (event: any) => {
       let speechTranscript = "";
-      for (let i = 0; i < event.results.length; i++) {
+
+      // Start strictly from event.resultIndex to prevent mobile engines from duplicating previous results
+      for (let i = event.resultIndex; i < event.results.length; i++) {
         speechTranscript += event.results[i][0].transcript;
       }
+
+      // Clean up whitespace
+      const cleanTranscript = speechTranscript.trim();
+      if (!cleanTranscript) return;
+
       const prefix = baseInputRef.current ? `${baseInputRef.current} ` : "";
-      setInput(prefix + speechTranscript);
+      
+      // Deduplicate: Don't append if the prefix already ends with this exact transcript snippet
+      if (!prefix.trim().endsWith(cleanTranscript)) {
+        setInput(prefix + cleanTranscript);
+      }
     };
 
     // SILENT ERROR HANDLING - Prevents Next.js Dev Overlay
@@ -366,6 +354,8 @@ export default function InterviewPage() {
     };
   }, []);
 
+  
+
   const toggleListening = () => {
     if (!recognitionRef.current) {
       alert("Voice transcription is not supported in this browser.");
@@ -384,6 +374,7 @@ export default function InterviewPage() {
 
   // 1. Fetch User Chats & Restore Active Chat on Refresh
   const fetchUserChats = async () => {
+    setIsFetchingChats(true); // Start loading
     try {
       const res = await fetch("/api/chats");
       if (!res.ok) return;
@@ -403,6 +394,8 @@ export default function InterviewPage() {
       }
     } catch (err) {
       console.error("Failed to load user chats", err);
+    } finally {
+      setIsFetchingChats(false); // Finished fetching
     }
   };
 
@@ -412,8 +405,52 @@ export default function InterviewPage() {
     }
   }, [status]);
 
+    const handleNewChat = useCallback(async () => {
+    if (chatList.length >= MAX_SESSIONS) return;
+    showLoader("Creating new session...");
+    try {
+      const res = await fetch("/api/chats", { method: "POST" });
+
+      if (!res.ok) {
+        const errorText = await res.text();
+        console.error("Server Error Output:", errorText);
+        alert(`Failed to create session (${res.status}). Check server logs.`);
+        return;
+      }
+
+      const data = await res.json();
+
+      setChatList((prev) => [data, ...prev]);
+      handleSelectChat(data.id);
+      setMessages([
+        {
+          id: "welcome",
+          role: "assistant",
+          content: `Welcome to **Amleefa AI**!\n\nTo tailor our technical interview session, please share your **target role**, **years of experience**, and **primary tech stack**.`,
+          time: new Date().toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit",
+          }),
+          reaction: getInitialReaction(),
+        },
+      ]);
+    } catch (err) {
+      console.error("Failed to create new session:", err);
+    }finally {
+      hideLoader();
+    }
+  }, [chatList.length]);
+
+  // Auto-start a new session on first login if no sessions exist
+  useEffect(() => {
+    if (status === "authenticated" && !isFetchingChats && chatList.length === 0) {
+      handleNewChat();
+    }
+  }, [status, isFetchingChats, chatList.length, handleNewChat]);
+
   // Helper to select a chat session
   const handleSelectChat = (id: string) => {
+    showLoader("Loading chat session...");
     setCurrentChatId(id);
     localStorage.setItem("activeChatId", id);
     setMobileSidebarOpen(false);
@@ -422,6 +459,7 @@ export default function InterviewPage() {
   // 2. Fetch Active Chat Messages from Database
   useEffect(() => {
     if (currentChatId && status === "authenticated") {
+      //showLoader("Loading chat session...");
       fetch(`/api/chats/${currentChatId}`)
         .then((res) => {
           if (!res.ok) throw new Error("Failed to load chat");
@@ -458,6 +496,9 @@ export default function InterviewPage() {
               reaction: getInitialReaction(),
             },
           ]);
+        })
+        .finally(() => {
+          hideLoader(); // Hide full-page loader when message fetch finishes
         });
     }
   }, [currentChatId, status]);
@@ -487,39 +528,41 @@ export default function InterviewPage() {
     setTimeout(() => setCopiedId(null), 2000);
   };
 
-  const handleNewChat = async () => {
-    if (chatList.length >= MAX_SESSIONS) return;
+  // const handleNewChat = async () => {
+  //   if (chatList.length >= MAX_SESSIONS) return;
 
-    try {
-      const res = await fetch("/api/chats", { method: "POST" });
+  //   try {
+  //     const res = await fetch("/api/chats", { method: "POST" });
 
-      if (!res.ok) {
-        const errorText = await res.text();
-        console.error("Server Error Output:", errorText);
-        alert(`Failed to create session (${res.status}). Check server logs.`);
-        return;
-      }
+  //     if (!res.ok) {
+  //       const errorText = await res.text();
+  //       console.error("Server Error Output:", errorText);
+  //       alert(`Failed to create session (${res.status}). Check server logs.`);
+  //       return;
+  //     }
 
-      const data = await res.json();
+  //     const data = await res.json();
 
-      setChatList((prev) => [data, ...prev]);
-      handleSelectChat(data.id);
-      setMessages([
-        {
-          id: "welcome",
-          role: "assistant",
-          content: `Welcome to **Amleefa AI**!\n\nTo tailor our technical interview session, please share your **target role**, **years of experience**, and **primary tech stack**.`,
-          time: new Date().toLocaleTimeString([], {
-            hour: "2-digit",
-            minute: "2-digit",
-          }),
-          reaction: getInitialReaction(),
-        },
-      ]);
-    } catch (err) {
-      console.error("Failed to create new session:", err);
-    }
-  };
+  //     setChatList((prev) => [data, ...prev]);
+  //     handleSelectChat(data.id);
+  //     setMessages([
+  //       {
+  //         id: "welcome",
+  //         role: "assistant",
+  //         content: `Welcome to **Amleefa AI**!\n\nTo tailor our technical interview session, please share your **target role**, **years of experience**, and **primary tech stack**.`,
+  //         time: new Date().toLocaleTimeString([], {
+  //           hour: "2-digit",
+  //           minute: "2-digit",
+  //         }),
+  //         reaction: getInitialReaction(),
+  //       },
+  //     ]);
+  //   } catch (err) {
+  //     console.error("Failed to create new session:", err);
+  //   }
+  // };
+
+
 
   const handleDeleteChat = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -1049,7 +1092,7 @@ export default function InterviewPage() {
                               );
                             },
 
-                            // Headings with direct, crisp text colors
+                            // Headings with direct, high-contrast text colors for both light and dark modes
                             h1({ children }) {
                               return (
                                 <h1 className="text-lg font-bold text-indigo-600 dark:text-indigo-400 tracking-tight border-b border-indigo-500/20 pb-2 mb-3 mt-1 flex items-center gap-2">
@@ -1060,7 +1103,11 @@ export default function InterviewPage() {
                             },
                             h2({ children }) {
                               return (
-                                <h2 className="text-base font-bold text-slate-900 dark:text-slate-100 border-b border-slate-200 dark:border-slate-800 pb-1.5 mb-3 mt-4 flex items-center gap-2">
+                                <h2 className={`text-base font-bold border-b pb-1.5 mb-3 mt-4 flex items-center gap-2 ${
+                                  isDark
+                                    ? "text-slate-100 border-slate-800"
+                                    : "text-slate-900 border-slate-200"
+                                }`}>
                                   <BookOpen className="w-4 h-4 text-indigo-500" />
                                   {children}
                                 </h2>
@@ -1068,12 +1115,13 @@ export default function InterviewPage() {
                             },
                             h3({ children }) {
                               return (
-                                <h3 className="text-sm font-bold text-indigo-600 dark:text-indigo-400 mb-2 mt-3">
+                                <h3 className={`text-sm font-bold mb-2 mt-3 ${
+                                  isDark ? "text-indigo-400" : "text-indigo-700"
+                                }`}>
                                   {children}
                                 </h3>
                               );
                             },
-
                             // Callout Box
                             blockquote({ children }) {
                               return (
@@ -1145,9 +1193,10 @@ export default function InterviewPage() {
                               const match = /language-(\w+)/.exec(
                                 className || "",
                               );
-                              const language = match ? match[1] : "javascript";
+                              const isMultiLine = codeString.includes("\n");
 
-                              if (inline) {
+                              // Render as inline code badge if explicitly inline OR if it's a single line without an explicit language specifier
+                              if (inline || (!match && !isMultiLine)) {
                                 return (
                                   <code
                                     className={`px-1.5 py-0.5 rounded text-[12px] font-mono border ${
@@ -1162,7 +1211,10 @@ export default function InterviewPage() {
                                 );
                               }
 
-                              // FIX 2: Generate a unique ID per code block (Message ID + language + first 10 chars)
+                              // Use matched language or default to generic code
+                              const language = match ? match[1] : "code";
+
+                              // Generate a unique ID per code block (Message ID + language + first 10 chars)
                               const uniqueBlockId = `${m.id}-${language}-${codeString.slice(0, 10).replace(/\s+/g, "")}`;
                               const isBlockCopied = copiedId === uniqueBlockId;
 

@@ -123,13 +123,51 @@ export async function POST(req: Request) {
       }
 
       // Create new chat
+      // activeChat = await prisma.chat.create({
+      //   data: {
+      //     userId,
+      //     title: message ? (message.length > 30 ? message.slice(0, 30) + "..." : message) : "New Interview Session",
+      //     status: "ACTIVE",
+      //   },
+      // });
+      // Create new chat
       activeChat = await prisma.chat.create({
         data: {
           userId,
-          title: message ? (message.length > 30 ? message.slice(0, 30) + "..." : message) : "New Interview Session",
+          title: message
+            ? message.length > 30
+              ? message.slice(0, 30) + "..."
+              : message
+            : "New Interview Session",
           status: "ACTIVE",
         },
       });
+
+      // ADDITION FOR ISSUE 2: If starting a fresh session without a user message yet, 
+      // let the AI generate its official introduction directly from the systemPrompt
+      if (!message) {
+        const initResponse = await client.chat.completions.create({
+          model: "llama-3.3-70b-versatile",
+          messages: [{ role: "system", content: systemPrompt }],
+        });
+
+        const initialAiText =
+          initResponse.choices[0]?.message?.content ||
+          "Welcome! To get started with your technical interview, please tell me your target role, years of experience, and primary tech stack.";
+
+        const firstAiMessage = await prisma.message.create({
+          data: {
+            chatId: activeChat.id,
+            role: "assistant",
+            content: initialAiText,
+          },
+        });
+
+        return NextResponse.json({
+          chatId: activeChat.id,
+          message: firstAiMessage,
+        });
+      }
     }
 
     // 3. Save incoming user message in DB
