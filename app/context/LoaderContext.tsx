@@ -1,9 +1,9 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect } from "react";
-import { usePathname, useSearchParams } from "next/navigation";
-import AmleefaLogo from "../api/lib/AmleefaLogo"; // Adjust path if needed
+import React, { createContext, useContext, useState, useCallback } from "react";
+import AmleefaLogo from "../api/lib/AmleefaLogo";
 import { Loader2 } from "lucide-react";
+import { SearchParamsHandler } from "./SearchParamsHandler";
 
 interface LoaderContextType {
   showLoader: (message?: string) => void;
@@ -16,10 +16,7 @@ const LoaderContext = createContext<LoaderContextType | undefined>(undefined);
 export function LoaderProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(false);
   const [loadingText, setLoadingText] = useState("Loading...");
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
 
-  // Show loader on manual triggers
   const showLoader = (message = "Loading...") => {
     setLoadingText(message);
     setIsLoading(true);
@@ -29,17 +26,17 @@ export function LoaderProvider({ children }: { children: React.ReactNode }) {
     setIsLoading(false);
   };
 
-  // Automatically hide loader when Next.js route navigation completes
-  useEffect(() => {
-    // Schedule state update asynchronously to avoid cascading sync renders
+  // Safe navigation handler passed to Suspense boundary
+  const handleRouteChange = useCallback(() => {
     const timer = setTimeout(() => {
       setIsLoading(false);
     }, 0);
-
     return () => clearTimeout(timer);
-  }, [pathname, searchParams]);
+  }, []);
+
   return (
     <LoaderContext.Provider value={{ showLoader, hideLoader, isLoading }}>
+      <SearchParamsHandler onNavigation={handleRouteChange} />
       {children}
 
       {/* Global Loader Overlay */}

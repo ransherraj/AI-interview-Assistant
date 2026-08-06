@@ -308,7 +308,7 @@ export default function InterviewPage() {
       if (!cleanTranscript) return;
 
       const prefix = baseInputRef.current ? `${baseInputRef.current} ` : "";
-      
+
       // Deduplicate: Don't append if the prefix already ends with this exact transcript snippet
       if (!prefix.trim().endsWith(cleanTranscript)) {
         setInput(prefix + cleanTranscript);
@@ -354,8 +354,6 @@ export default function InterviewPage() {
     };
   }, []);
 
-  
-
   const toggleListening = () => {
     if (!recognitionRef.current) {
       alert("Voice transcription is not supported in this browser.");
@@ -375,6 +373,7 @@ export default function InterviewPage() {
   // 1. Fetch User Chats & Restore Active Chat on Refresh
   const fetchUserChats = async () => {
     setIsFetchingChats(true); // Start loading
+    showLoader("Loading your chats..."); // 1. Trigger global loader on start
     try {
       const res = await fetch("/api/chats");
       if (!res.ok) return;
@@ -396,6 +395,7 @@ export default function InterviewPage() {
       console.error("Failed to load user chats", err);
     } finally {
       setIsFetchingChats(false); // Finished fetching
+      hideLoader(); // 2. Dismiss global loader when done (success or error)
     }
   };
 
@@ -405,7 +405,7 @@ export default function InterviewPage() {
     }
   }, [status]);
 
-    const handleNewChat = useCallback(async () => {
+  const handleNewChat = useCallback(async () => {
     if (chatList.length >= MAX_SESSIONS) return;
     showLoader("Creating new session...");
     try {
@@ -436,14 +436,18 @@ export default function InterviewPage() {
       ]);
     } catch (err) {
       console.error("Failed to create new session:", err);
-    }finally {
+    } finally {
       hideLoader();
     }
   }, [chatList.length]);
 
   // Auto-start a new session on first login if no sessions exist
   useEffect(() => {
-    if (status === "authenticated" && !isFetchingChats && chatList.length === 0) {
+    if (
+      status === "authenticated" &&
+      !isFetchingChats &&
+      chatList.length === 0
+    ) {
       handleNewChat();
     }
   }, [status, isFetchingChats, chatList.length, handleNewChat]);
@@ -561,8 +565,6 @@ export default function InterviewPage() {
   //     console.error("Failed to create new session:", err);
   //   }
   // };
-
-
 
   const handleDeleteChat = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -938,14 +940,21 @@ export default function InterviewPage() {
 
             <div>
               <h1
-                className={`font-bold text-sm sm:text-base flex items-center gap-2 ${isDark ? "text-white" : "text-slate-900"}`}
+                className={`font-bold text-sm sm:text-base flex items-center gap-2 ${
+                  isDark ? "text-white" : "text-slate-900"
+                }`}
               >
-                Amleefa AI
-                <span className="px-2.5 py-0.5 text-[10px] font-semibold rounded-full bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20">
-                  Llama 3.3 70B
+                {/* Always visible (Mobile, Tablet, Desktop) */}
+                <span>Amleefa AI</span>
+
+                {/* Hidden on Mobile & Tablet, visible only on Desktop (lg and up) */}
+                <span className="hidden lg:inline-block px-2 py-0.5 text-[8.5px] tracking-tight font-semibold rounded-full bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20 whitespace-nowrap">
+                  Powered by Llama 3.3 70B
                 </span>
               </h1>
-              <p className="text-xs text-slate-500 dark:text-slate-400 font-medium hidden sm:block">
+
+              {/* Hidden on Mobile & Tablet, visible only on Desktop (lg and up) */}
+              <p className="text-xs text-slate-500 dark:text-slate-400 font-medium hidden lg:block">
                 Architect Your Tech Future with Amleefa AI
               </p>
             </div>
@@ -1030,8 +1039,7 @@ export default function InterviewPage() {
         </header>
 
         {/* Chat Stream */}
-        {/* Chat Stream */}
-        <main className="flex-1 overflow-y-auto space-y-6 px-1 sm:px-2 pr-2 py-2 scroll-smooth">
+        <main className="flex-1 overflow-y-auto space-y-6 px-1 sm:px-2 pr-2 py-2 scroll-smooth custom-scrollbar">
           {messages.map((m) => {
             const isAssistant = m.role === "assistant";
 
@@ -1103,11 +1111,13 @@ export default function InterviewPage() {
                             },
                             h2({ children }) {
                               return (
-                                <h2 className={`text-base font-bold border-b pb-1.5 mb-3 mt-4 flex items-center gap-2 ${
-                                  isDark
-                                    ? "text-slate-100 border-slate-800"
-                                    : "text-slate-900 border-slate-200"
-                                }`}>
+                                <h2
+                                  className={`text-base font-bold border-b pb-1.5 mb-3 mt-4 flex items-center gap-2 ${
+                                    isDark
+                                      ? "text-slate-100 border-slate-800"
+                                      : "text-slate-900 border-slate-200"
+                                  }`}
+                                >
                                   <BookOpen className="w-4 h-4 text-indigo-500" />
                                   {children}
                                 </h2>
@@ -1115,9 +1125,13 @@ export default function InterviewPage() {
                             },
                             h3({ children }) {
                               return (
-                                <h3 className={`text-sm font-bold mb-2 mt-3 ${
-                                  isDark ? "text-indigo-400" : "text-indigo-700"
-                                }`}>
+                                <h3
+                                  className={`text-sm font-bold mb-2 mt-3 ${
+                                    isDark
+                                      ? "text-indigo-400"
+                                      : "text-indigo-700"
+                                  }`}
+                                >
                                   {children}
                                 </h3>
                               );
