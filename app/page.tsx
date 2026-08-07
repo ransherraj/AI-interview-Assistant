@@ -84,6 +84,7 @@ export default function InterviewPage() {
   const [isListening, setIsListening] = useState(false);
   const recognitionRef = useRef<any>(null);
   const baseInputRef = useRef<string>("");
+  const sessionFinalRef = useRef<string>(""); // <-- Add this here
 
   // Voice Synthesis State
   const [ttsEnabled, setTtsEnabled] = useState(false);
@@ -296,22 +297,36 @@ export default function InterviewPage() {
     recognition.lang = "en-US";
 
     recognition.onresult = (event: any) => {
-      let speechTranscript = "";
+      let currentFinal = "";
+      let currentInterim = "";
 
-      // Start strictly from event.resultIndex to prevent mobile engines from duplicating previous results
       for (let i = event.resultIndex; i < event.results.length; i++) {
-        speechTranscript += event.results[i][0].transcript;
+        const transcript = event.results[i][0].transcript;
+        if (event.results[i].isFinal) {
+          currentFinal += transcript;
+        } else {
+          currentInterim += transcript;
+        }
       }
 
-      // Clean up whitespace
-      const cleanTranscript = speechTranscript.trim();
-      if (!cleanTranscript) return;
+      // Update session accumulation with newly finalized text
+      if (currentFinal) {
+        sessionFinalRef.current +=
+          (sessionFinalRef.current ? " " : "") + currentFinal.trim();
+      }
+
+      // Combine session-accumulated final text with any active interim text
+      const activeSpeech = [sessionFinalRef.current, currentInterim.trim()]
+        .filter(Boolean)
+        .join(" ");
+
+      if (!activeSpeech) return;
 
       const prefix = baseInputRef.current ? `${baseInputRef.current} ` : "";
 
-      // Deduplicate: Don't append if the prefix already ends with this exact transcript snippet
-      if (!prefix.trim().endsWith(cleanTranscript)) {
-        setInput(prefix + cleanTranscript);
+      // Deduplicate against base input prefix
+      if (!prefix.trim().endsWith(activeSpeech)) {
+        setInput(prefix + activeSpeech);
       }
     };
 
@@ -319,7 +334,6 @@ export default function InterviewPage() {
     recognition.onerror = (event: any) => {
       const err = String(event?.error || "").toLowerCase();
 
-      // Explicitly ignore benign speech errors
       if (
         err.includes("aborted") ||
         err.includes("no-speech") ||
@@ -328,7 +342,6 @@ export default function InterviewPage() {
         return;
       }
 
-      // Only log critical/unexpected errors
       console.warn("Speech recognition warning:", event.error);
       setIsListening(false);
       baseInputRef.current = "";
@@ -341,7 +354,6 @@ export default function InterviewPage() {
 
     recognitionRef.current = recognition;
 
-    // Cleanup on unmount or re-render to stop active instances
     return () => {
       if (recognitionRef.current) {
         recognitionRef.current.onresult = null;
@@ -364,6 +376,7 @@ export default function InterviewPage() {
       recognitionRef.current.stop();
       setIsListening(false);
     } else {
+      sessionFinalRef.current = ""; // <-- Reset speech buffer on start
       baseInputRef.current = input;
       recognitionRef.current.start();
       setIsListening(true);
@@ -844,8 +857,9 @@ export default function InterviewPage() {
                 </div>
 
                 <button
+                  type="button"
                   onClick={(e) => handleDeleteChat(chat.id, e)}
-                  className="opacity-0 group-hover:opacity-100 p-1 text-slate-400 hover:text-red-500 transition-all rounded-md"
+                  className="p-1 text-slate-400 hover:text-red-500 dark:text-slate-500 dark:hover:text-red-400 transition-colors rounded-md shrink-0"
                   title="Delete Session"
                 >
                   <Trash2 className="w-3.5 h-3.5" />

@@ -2,6 +2,13 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
+import OpenAI from "openai";
+import { systemPrompt } from "../lib/SystemPrompt"; // Fixed: Clean export location avoiding route circular dependency
+
+const client = new OpenAI({
+  apiKey: process.env.GROQ_API_KEY,
+  baseURL: "https://api.groq.com/openai/v1",
+});
 
 // GET: Fetch active chats for the authenticated user
 export async function GET() {
@@ -53,12 +60,33 @@ export async function POST(req: Request) {
       );
     }
 
-    // Create a new session in Prisma
+    // Dynamically generate AI initial message using system prompt
+    const initResponse = await client.chat.completions.create({
+      model: "llama-3.3-70b-versatile",
+      messages: [{ role: "system", content: systemPrompt }],
+    });
+
+    const initialAiText =
+      initResponse.choices[0]?.message?.content ||
+      "Welcome! To get started with your technical interview, please tell me your target role, years of experience, and primary tech stack.";
+
+    // Create a new session in Prisma with dynamically generated initial message
     const newChat = await prisma.chat.create({
       data: {
         userId,
         title: "New Interview Session",
         status: "ACTIVE",
+        messages: {
+          create: [
+            {
+              role: "assistant",
+              content: initialAiText,
+            },
+          ],
+        },
+      },
+      include: {
+        messages: true,
       },
     });
 
