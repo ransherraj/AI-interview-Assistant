@@ -84,7 +84,7 @@ export async function POST(req: Request) {
       // let the AI generate its official introduction directly from the systemPrompt
       if (!message) {
         const initResponse = await client.chat.completions.create({
-          model: "llama-3.3-70b-versatile",
+          model: "openai/gpt-oss-120b",
           messages: [{ role: "system", content: systemPrompt }],
         });
 
@@ -132,7 +132,7 @@ export async function POST(req: Request) {
 
     // 5. Query Groq API
     const response = await client.chat.completions.create({
-      model: "llama-3.3-70b-versatile",
+      model: "openai/gpt-oss-120b",
       messages: fullConversation,
     });
 
